@@ -1,4 +1,4 @@
-# BlendScan 🛡️
+# BlendScan
 
 **Comprehensive security analysis for Blender files and scripts with auto-protection**
 
@@ -8,7 +8,7 @@
 [![Security](https://img.shields.io/badge/Security-Critical-red.svg?style=flat&logo=shield)](https://github.com/kents00/blendscan)
 [![Version](https://img.shields.io/badge/Version-2.0.0-blue.svg?style=flat)](https://gitlab.com/kents00/blendscan)
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Introduction](#introduction)
 - [Features](#features)
@@ -21,43 +21,43 @@
 - [License](#license)
 - [Support](#support)
 
-## 🛡️ Introduction
+## Introduction
 
 BlendScan is a comprehensive security addon for Blender that protects users from malicious `.blend` files and embedded scripts. With the rise of malware targeting 3D artists through infected Blender files, BlendScan provides real-time protection, automated threat detection, and secure script execution.
 
-**⚠️ Why BlendScan?**
+**Why BlendScan?**
 - Malicious `.blend` files can contain embedded Python scripts that execute automatically
 - Scripts can steal data, install malware, or damage your system
 - BlendScan prevents automatic execution and analyzes content before allowing scripts to run
 
-## ✨ Features
+## Features
 
-### 🔍 **Comprehensive Threat Detection**
+### **Comprehensive Threat Detection**
 - **Real-time Script Analysis** - Analyzes Python scripts before execution
 - **Embedded Script Detection** - Finds hidden scripts in text blocks, nodes, and properties
 - **Base64/Hex Decoding** - Detects obfuscated malicious payloads
 - **Driver Expression Analysis** - Scans animation drivers for malicious code
 - **Custom Property Scanning** - Checks for scripts hidden in object properties
 
-### 🛡️ **Auto-Protection System**
+### **Auto-Protection System**
 - **Auto-Run Blocking** - Automatically disables "Auto Run Python Scripts"
 - **Ctrl+P Override** - Secure script execution with security analysis
 - **Countdown Warning** - 10-second warning before closing on critical threats
 - **Continuous Monitoring** - Real-time monitoring of text block changes
 
-### 📊 **Risk Assessment**
+### **Risk Assessment**
 - **4-Level Risk System** - Low, Medium, High, Critical
 - **Pattern-Based Detection** - 50+ security rules for threat identification
 - **Network Activity Detection** - Identifies scripts making external connections
 - **System Access Monitoring** - Detects file system and command execution
 
-### 🎯 **Blender-Specific Protection**
+### **Blender-Specific Protection**
 - **Event Handler Analysis** - Scans load/save/render handlers
 - **Node Script Detection** - Analyzes Geometry/Shader node scripts
 - **Addon Verification** - Checks for suspicious addon installations
 - **Driver Namespace Protection** - Monitors driver namespace manipulation
 
-## 📦 Installation
+## Installation
 
 ### Method 1: Manual Installation
 1. Download the latest release from [GitLab](https://gitlab.com/kents00/blendscan)
@@ -78,7 +78,7 @@ cp -r . ~/.config/blender/4.4/scripts/addons/blendscan/
 - **Python 3.10+** (included with Blender)
 - **Operating System**: Windows, macOS, Linux
 
-## 🚀 Usage
+## Usage
 
 ### Basic Protection (Automatic)
 BlendScan works automatically once installed:
@@ -103,7 +103,7 @@ BlendScan works automatically once installed:
 ### Security Dialog
 When threats are detected:
 ```
-⚠️ SECURITY THREAT DETECTED
+SECURITY THREAT DETECTED
 Blender will close in 10 seconds
 
 Risk Level: CRITICAL
@@ -113,7 +113,7 @@ Risk Level: CRITICAL
 • Only open files from trusted sources
 ```
 
-## 🔒 Security Features
+## Security Features
 
 ### Threat Detection Categories
 
@@ -128,22 +128,22 @@ Risk Level: CRITICAL
 
 ### Protection Levels
 
-#### 🔴 **Critical Threats**
+#### **Critical Threats**
 - **Immediate Closure** - Blender closes automatically
 - **10-Second Warning** - Countdown dialog with threat details
 - **No Execution** - Scripts are completely blocked
 
-#### 🟡 **High/Medium Threats**
+#### **High/Medium Threats**
 - **Warning Messages** - Console and UI notifications
 - **Optional Execution** - User can choose to proceed
 - **Detailed Analysis** - Full threat breakdown
 
-#### 🟢 **Low Risk**
+#### **Low Risk**
 - **Console Logging** - Informational messages
 - **Normal Execution** - Scripts run normally
 - **Background Monitoring** - Continuous observation
 
-## 🖥️ Interface
+## Interface
 
 ### Text Editor Panel
 ```
@@ -173,7 +173,7 @@ Security Issues:
     Code: os.system(f"rm -rf {user_home}")
 ```
 
-## ⚙️ Configuration
+## Configuration
 
 ### Auto-Run Setting
 ```python
@@ -199,7 +199,7 @@ BlenderSecurityRule(
 bpy.app.timers.register(continuous_monitoring, first_interval=2.0)
 ```
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions to improve BlendScan's security capabilities!
 
@@ -222,11 +222,11 @@ ln -s $(pwd) ~/.config/blender/4.4/scripts/addons/blendscan
 - **Bug Reports**: Create GitLab issue
 - **Feature Requests**: Use GitLab discussions
 
-## 📄 License
+## License
 
 This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
 
-## 🆘 Support
+## Support
 
 ### Getting Help
 - **Documentation**: [GitLab Wiki](https://gitlab.com/kents00/blendscan/-/wikis/home)
@@ -245,4 +245,4 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 
 ---
 
-⚠️ **Security Notice**: Always scan files from unknown sources. BlendScan provides protection but cannot guarantee 100% security against all threats.
+**Security Notice**: Always scan files from unknown sources. BlendScan provides protection but cannot guarantee 100% security against all threats.
