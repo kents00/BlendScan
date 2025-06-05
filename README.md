@@ -6,7 +6,7 @@
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg?style=flat&logo=python)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-GPL--3.0-green.svg?style=flat)](LICENSE)
 [![Security](https://img.shields.io/badge/Security-Critical-red.svg?style=flat&logo=shield)](https://github.com/kents00/blendscan)
-[![Version](https://img.shields.io/badge/Version-2.0.0-blue.svg?style=flat)](https://gitlab.com/kents00/blendscan)
+[![Version](https://img.shields.io/badge/Version-1.0.0-blue.svg?style=flat)](https://gitlab.com/kents00/blendscan)
 
 ## Table of Contents
 
