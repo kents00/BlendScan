@@ -225,33 +225,12 @@ Risk Level: CRITICAL
 
 ## Interface
 
-### Text Editor Panel
-```
-┌─ BlendScan Security ─────────────┐
-│ Auto-Run Scripts: DISABLED ✓     │
-│ [Disable Auto-Run (Recommended)] │
-├─ Script: script.py ──────────────┤
-│ [Analyze Script]                 │
-│ [Run Script (Secure)]            │
-│ [Run Script (Unsecured)] ⚠️      │
-│ [Bypass All Security] ❌         │
-├─ Global Security ────────────────┤
-│ [Scan All Scripts]               │
-│ Monitoring Active ✓              │
-└──────────────────────────────────┘
-```
+### Window Pop-up Example
+![Screenshot 2025-06-05 153827](https://github.com/user-attachments/assets/ed31341e-0388-4367-b49b-d26b1bdf0fd0)
+
 
 ### Console Output Example
-```
-BlendScan: Analyzing script 'malicious.py' before execution...
-BLOCKING SCRIPT EXECUTION: malicious.py
-Risk Level: CRITICAL
-Security Issues:
-  Line 15: Base64 Decoding (CRITICAL)
-    Code: decoded = base64.b64decode(payload)
-  Line 23: System Command Execution (CRITICAL)
-    Code: os.system(f"rm -rf {user_home}")
-```
+![Screenshot 2025-06-05 153908](https://github.com/user-attachments/assets/fdba75a2-cc05-4c96-bdb1-14a07d627946)
 
 ## Configuration
 
