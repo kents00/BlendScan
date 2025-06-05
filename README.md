@@ -82,14 +82,14 @@ docker run -it --rm \
 ```
 
 ### Method 2: Manual Installation
-1. Download the latest release from [GitLab](https://gitlab.com/kents00/blendscan)
+1. Download the latest release from [Github](https://github.com/kents00/blendscan)
 2. Open Blender and go to `Edit > Preferences > Add-ons`
 3. Click `Install...` and select the BlendScan zip file
 4. Enable the addon by checking the box next to "Security: BlendScan"
 
 ### Method 3: Development Installation
 ```bash
-git clone https://gitlab.com/kents00/blendscan.git
+git clone https://github.com/kents00/blendscan.git
 cd blendscan
 # Copy to Blender addons directory
 cp -r . ~/.config/blender/4.4/scripts/addons/blendscan/
@@ -131,7 +131,7 @@ with open('/reports/security_report.json', 'w') as f:
 ### Docker Compose for Development
 ```bash
 # Clone and run with docker-compose
-git clone https://gitlab.com/kents00/blendscan.git
+git clone https://github.com/kents00/blendscan.git
 cd blendscan
 
 # Start development environment
@@ -285,7 +285,7 @@ We welcome contributions to improve BlendScan's security capabilities!
 
 ### Development Setup
 ```bash
-git clone https://gitlab.com/kents00/blendscan.git
+git clone https://github.com/kents00/blendscan.git
 cd blendscan
 # Install in development mode
 ln -s $(pwd) ~/.config/blender/4.4/scripts/addons/blendscan
