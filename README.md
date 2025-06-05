@@ -225,9 +225,11 @@ Risk Level: CRITICAL
 
 ## Interface
 
+### Text Editor UI
+![Screenshot 2025-06-05 155055](https://github.com/user-attachments/assets/3be1ecaf-5211-4fd6-bc24-bb61eb6384fd)
+
 ### Window Pop-up Example
 ![Screenshot 2025-06-05 153827](https://github.com/user-attachments/assets/ed31341e-0388-4367-b49b-d26b1bdf0fd0)
-
 
 ### Console Output Example
 ![Screenshot 2025-06-05 153908](https://github.com/user-attachments/assets/fdba75a2-cc05-4c96-bdb1-14a07d627946)
