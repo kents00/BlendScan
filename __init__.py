@@ -18,6 +18,13 @@ from .analyzer import BlenderSecurityAnalyzer
 SECURE_RUN_SCRIPT_ID = 'security.secure_run_script'
 TOGGLE_AUTO_RUN_ID = "security.toggle_auto_run"
 
+# Global countdown state
+countdown_state = {
+    'active': False,
+    'remaining_time': 0,
+    'security_issues': ""
+}
+
 class SECURITY_OT_CountdownWarning(bpy.types.Operator):
     """Security warning dialog with countdown"""
     bl_idname = "security.countdown_warning"
@@ -30,12 +37,20 @@ class SECURITY_OT_CountdownWarning(bpy.types.Operator):
 
     def execute(self, context):
         print("User clicked OK - closing Blender immediately")
+        # Stop countdown before quitting
+        global countdown_state
+        countdown_state['active'] = False
         bpy.ops.wm.quit_blender()
         return {'FINISHED'}
 
     def invoke(self, context, event):
+        # Initialize global countdown state
+        global countdown_state
+        countdown_state['active'] = True
+        countdown_state['remaining_time'] = self.countdown
+        countdown_state['security_issues'] = self.security_issues
+
         # Start the countdown timer
-        self.remaining_time = self.countdown
         self._start_countdown(context)
 
         # Show the dialog immediately
@@ -45,16 +60,27 @@ class SECURITY_OT_CountdownWarning(bpy.types.Operator):
     def _start_countdown(self, context):
         """Start the countdown using a timer"""
         def countdown_update():
-            if self.remaining_time > 0:
-                self.remaining_time -= 1
+            global countdown_state
+
+            # Check if countdown is still active
+            if not countdown_state['active']:
+                return None  # Stop the timer
+
+            if countdown_state['remaining_time'] > 0:
+                countdown_state['remaining_time'] -= 1
                 # Force redraw to update the countdown display
-                for area in context.screen.areas:
-                    area.tag_redraw()
+                try:
+                    for area in context.screen.areas:
+                        area.tag_redraw()
+                except:
+                    # Context might be invalid, ignore redraw errors
+                    pass
                 # Continue countdown
                 return 1.0  # Run again in 1 second
             else:
                 # Time's up - close Blender
                 print("Countdown finished - closing Blender")
+                countdown_state['active'] = False
                 bpy.ops.wm.quit_blender()
                 return None  # Stop the timer
 
@@ -63,6 +89,7 @@ class SECURITY_OT_CountdownWarning(bpy.types.Operator):
 
     def draw(self, context):
         layout = self.layout
+        global countdown_state
 
         # Header with warning
         header_box = layout.box()
@@ -72,18 +99,20 @@ class SECURITY_OT_CountdownWarning(bpy.types.Operator):
         row.scale_y = 1.5
         row.label(text="SECURITY THREAT DETECTED", icon='ERROR')
 
-        # Countdown display
+        # Countdown display - use global state
         row = header_box.row()
         row.scale_y = 2.0
         row.alert = True
-        row.label(text=f"Blender will close in {self.remaining_time} seconds", icon='TIME')
+        remaining = countdown_state.get('remaining_time', self.remaining_time)
+        row.label(text=f"Blender will close in {remaining} seconds", icon='TIME')
 
         layout.separator()
 
         # Security details
         try:
-            if self.security_issues:
-                issues_data = eval(self.security_issues)
+            security_issues = countdown_state.get('security_issues', self.security_issues)
+            if security_issues:
+                issues_data = eval(security_issues)
 
                 # Risk level
                 info_box = layout.box()
@@ -133,6 +162,12 @@ class SECURITY_OT_CountdownWarning(bpy.types.Operator):
 
         layout.separator()
         layout.label(text="Click OK to close immediately, or wait for automatic closure.")
+
+    def cancel(self, context):
+        """Called when dialog is cancelled/closed"""
+        global countdown_state
+        countdown_state['active'] = False
+        return {'CANCELLED'}
 
 # Remove the override operator and replace with a wrapper
 class SECURITY_OT_SecureRunScript(bpy.types.Operator):
