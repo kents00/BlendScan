@@ -73,7 +73,12 @@ build:
         echo "Extracting version from project files..."
         # Try multiple patterns to find version
         if [ -f "__init__.py" ]; then
-          VERSION=$(grep -E '(version|__version__)' __init__.py | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          # Handle Blender addon version format: "version": (1, 0, 0)
+          VERSION=$(grep -A 1 '"version"' __init__.py | grep -oE '\([0-9]+,\s*[0-9]+,\s*[0-9]+\)' | sed 's/[(),[:space:]]//g' | tr ',' '.')
+          if [ -z "$VERSION" ]; then
+            # Fallback to standard version patterns
+            VERSION=$(grep -E '(version|__version__)' __init__.py | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          fi
         elif [ -f "setup.py" ]; then
           VERSION=$(grep -E 'version=' setup.py | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
         elif [ -f "pyproject.toml" ]; then
@@ -86,9 +91,13 @@ build:
           if [ "$DOCKER_HUB_ENABLED" = "true" ]; then
             docker tag blendscan-temp $DOCKER_HUB_IMAGE:v$VERSION
           fi
+          export VERSION_TAG="v$VERSION"
         else
           echo "No version found in project files, skipping version tagging"
+          export VERSION_TAG=""
         fi
+      else
+        export VERSION_TAG=""
       fi
 
     # Push to registries
@@ -103,11 +112,11 @@ build:
 
     # Push version tag if it exists
     - |
-      if [ "$CI_COMMIT_BRANCH" = "main" ] && [ -n "$VERSION" ]; then
-        echo "Pushing version tag: v$VERSION"
-        docker push $DOCKER_IMAGE_NAME:v$VERSION
+      if [ -n "$VERSION_TAG" ]; then
+        echo "Pushing version tag: $VERSION_TAG"
+        docker push $DOCKER_IMAGE_NAME:$VERSION_TAG
         if [ "$DOCKER_HUB_ENABLED" = "true" ]; then
-          docker push $DOCKER_HUB_IMAGE:v$VERSION
+          docker push $DOCKER_HUB_IMAGE:$VERSION_TAG
         fi
       fi
 
