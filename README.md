@@ -317,7 +317,7 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 ### Author
 **Kent Edoloverio**
 - GitLab: [@kents00](https://gitlab.com/kents00)
-- Email: kent@example.com
+- Github: [@kents00](https://github.com/kents00)
 
 ### Acknowledgments
 - Blender Foundation for the amazing 3D software
