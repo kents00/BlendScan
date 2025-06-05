@@ -71,12 +71,23 @@ build:
     - |
       if [ "$CI_COMMIT_BRANCH" = "main" ]; then
         echo "Extracting version from project files..."
+        VERSION=""
+
         # Try multiple patterns to find version
         if [ -f "__init__.py" ]; then
+          echo "Checking __init__.py for Blender addon version..."
           # Handle Blender addon version format: "version": (1, 0, 0)
-          VERSION=$(grep -A 1 '"version"' __init__.py | grep -oE '\([0-9]+,\s*[0-9]+,\s*[0-9]+\)' | sed 's/[(),[:space:]]//g' | tr ',' '.')
+          VERSION_TUPLE=$(grep -A 1 '"version"' __init__.py | grep -oE '\([0-9]+,\s*[0-9]+,\s*[0-9]+\)' | head -1)
+          if [ -n "$VERSION_TUPLE" ]; then
+            echo "Found version tuple: $VERSION_TUPLE"
+            # Extract numbers and convert to dotted format
+            VERSION=$(echo "$VERSION_TUPLE" | sed 's/[(),[:space:]]//g' | tr ',' '.')
+            echo "Converted to: $VERSION"
+          fi
+
+          # Fallback to standard version patterns if tuple format failed
           if [ -z "$VERSION" ]; then
-            # Fallback to standard version patterns
+            echo "Trying standard version patterns..."
             VERSION=$(grep -E '(version|__version__)' __init__.py | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
           fi
         elif [ -f "setup.py" ]; then
@@ -85,18 +96,27 @@ build:
           VERSION=$(grep -E 'version =' pyproject.toml | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
         fi
 
+        # Validate version format (must be X.Y.Z)
         if [ -n "$VERSION" ]; then
-          echo "Found version: $VERSION"
-          docker tag blendscan-temp $DOCKER_IMAGE_NAME:v$VERSION
-          if [ "$DOCKER_HUB_ENABLED" = "true" ]; then
-            docker tag blendscan-temp $DOCKER_HUB_IMAGE:v$VERSION
+          if echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Valid version found: $VERSION"
+            echo "Tagging with version: v$VERSION"
+            docker tag blendscan-temp $DOCKER_IMAGE_NAME:v$VERSION
+            if [ "$DOCKER_HUB_ENABLED" = "true" ]; then
+              docker tag blendscan-temp $DOCKER_HUB_IMAGE:v$VERSION
+            fi
+            export VERSION_TAG="v$VERSION"
+          else
+            echo "Invalid version format: $VERSION (expected X.Y.Z)"
+            echo "Skipping version tagging"
+            export VERSION_TAG=""
           fi
-          export VERSION_TAG="v$VERSION"
         else
-          echo "No version found in project files, skipping version tagging"
+          echo "No version found in project files"
           export VERSION_TAG=""
         fi
       else
+        echo "Not on main branch, skipping version extraction"
         export VERSION_TAG=""
       fi
 
