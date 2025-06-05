@@ -304,8 +304,8 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 ## Support
 
 ### Getting Help
-- **Documentation**: [Github Wiki](**https://github.com/kents00/blendscan/-/wikis/home**)
-- **Issues**: [Github Issues](https://github.com/kents00/blendscan/-/issues)
+- **Documentation**: [Github Wiki](https://github.com/kents00/BlendScan/wiki)
+- **Issues**: [Github Issues](https://github.com/kents00/BlendScan/issues)
 - **Docker Hub**: [kents00/blendscan](https://hub.docker.com/r/kents00/blendscan)
 
 ### Author
