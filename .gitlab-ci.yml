@@ -40,6 +40,8 @@ build:
   variables:
     DOCKER_BUILDKIT: 1
   before_script:
+    # Install git to fix buildx warning
+    - apk add --no-cache git
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
     - |
       if [ -n "$DOCKER_HUB_USERNAME" ] && [ -n "$DOCKER_HUB_PASSWORD" ]; then
@@ -75,7 +77,12 @@ build:
 
         # Try multiple patterns to find version
         if [ -f "__init__.py" ]; then
-          echo "Checking __init__.py for Blender addon version..."
+          echo "Found __init__.py, checking for Blender addon version..."
+
+          # Debug: Show the relevant part of __init__.py
+          echo "Searching for version in __init__.py:"
+          grep -A 3 -B 1 '"version"' __init__.py || echo "No 'version' key found"
+
           # Handle Blender addon version format: "version": (1, 0, 0)
           VERSION_TUPLE=$(grep -A 1 '"version"' __init__.py | grep -oE '\([0-9]+,\s*[0-9]+,\s*[0-9]+\)' | head -1)
           if [ -n "$VERSION_TUPLE" ]; then
@@ -87,13 +94,20 @@ build:
 
           # Fallback to standard version patterns if tuple format failed
           if [ -z "$VERSION" ]; then
-            echo "Trying standard version patterns..."
+            echo "Trying standard version patterns in __init__.py..."
             VERSION=$(grep -E '(version|__version__)' __init__.py | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+            if [ -n "$VERSION" ]; then
+              echo "Found standard version: $VERSION"
+            fi
           fi
         elif [ -f "setup.py" ]; then
+          echo "Found setup.py, extracting version..."
           VERSION=$(grep -E 'version=' setup.py | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
         elif [ -f "pyproject.toml" ]; then
+          echo "Found pyproject.toml, extracting version..."
           VERSION=$(grep -E 'version =' pyproject.toml | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+        else
+          echo "No version files found (__init__.py, setup.py, pyproject.toml)"
         fi
 
         # Validate version format (must be X.Y.Z)
@@ -116,7 +130,7 @@ build:
           export VERSION_TAG=""
         fi
       else
-        echo "Not on main branch, skipping version extraction"
+        echo "Not on main branch ($CI_COMMIT_BRANCH), skipping version extraction"
         export VERSION_TAG=""
       fi
 
