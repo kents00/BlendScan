@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  blendscan:
+    build: .
+    image: blendscan:latest
+    container_name: blendscan
+    volumes:
+      - ./test-files:/data
+      - blender-config:/home/blender/.config
+    environment:
+      - DISPLAY=${DISPLAY:-:0}
+    stdin_open: true
+    tty: true
+
+  blendscan-gui:
+    build: .
+    image: blendscan:latest
+    container_name: blendscan-gui
+    volumes:
+      - ./test-files:/data
+      - blender-config:/home/blender/.config
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    environment:
+      - DISPLAY=${DISPLAY:-:0}
+    network_mode: host
+    stdin_open: true
+    tty: true
+    command: ["--"]
+
+volumes:
+  blender-config:
