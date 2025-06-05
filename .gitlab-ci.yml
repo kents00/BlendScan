@@ -118,20 +118,19 @@ test:docker:
   script:
     - echo "Building test image..."
     - docker build -t blendscan-test .
-
     - echo "Testing Blender version (with software rendering fallback)..."
     - docker run --rm --env LIBGL_ALWAYS_SOFTWARE=1 blendscan-test blender --version || echo "Direct version check failed, trying alternative..."
-
     - echo "Testing Blender basic functionality..."
-    - docker run --rm --env LIBGL_ALWAYS_SOFTWARE=1 blendscan-test blender --background --factory-startup --python-expr "import bpy; print('✓ Blender loaded successfully')" || {
-        echo "ERROR: Blender cannot run in CI environment";
-        echo "Checking library dependencies...";
-        docker run --rm blendscan-test ldd /opt/blender/blender | head -20;
-        exit 1;
+    - |
+      docker run --rm --env LIBGL_ALWAYS_SOFTWARE=1 blendscan-test blender --background --factory-startup --python-expr "import bpy; print('✓ Blender loaded successfully')" || {
+        echo "ERROR: Blender cannot run in CI environment"
+        echo "Checking library dependencies..."
+        docker run --rm blendscan-test ldd /opt/blender/blender | head -20
+        exit 1
       }
-
     - echo "Testing BlendScan addon loading..."
-    - docker run --rm --env LIBGL_ALWAYS_SOFTWARE=1 blendscan-test blender --background --factory-startup --python-expr "
+    - |
+      docker run --rm --env LIBGL_ALWAYS_SOFTWARE=1 blendscan-test blender --background --factory-startup --python-expr "
         import bpy;
         import sys;
         sys.path.append('/home/blender/.config/blender/4.4/scripts/addons');
@@ -140,9 +139,9 @@ test:docker:
         analyzer = BlenderSecurityAnalyzer();
         print(f'✓ BlendScan loaded with {len(analyzer.security_rules)} security rules')
       "
-
     - echo "Testing security detection..."
-    - docker run --rm --env LIBGL_ALWAYS_SOFTWARE=1 blendscan-test blender --background --factory-startup --python-expr "
+    - |
+      docker run --rm --env LIBGL_ALWAYS_SOFTWARE=1 blendscan-test blender --background --factory-startup --python-expr "
         import bpy;
         import sys;
         sys.path.append('/home/blender/.config/blender/4.4/scripts/addons');
