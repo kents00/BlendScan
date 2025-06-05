@@ -82,14 +82,14 @@ docker run -it --rm \
 ```
 
 ### Method 2: Manual Installation
-1. Download the latest release from [GitLab](https://gitlab.com/kents00/blendscan)
+1. Download the latest release from [Github](https://github.com/kents00/blendscan)
 2. Open Blender and go to `Edit > Preferences > Add-ons`
 3. Click `Install...` and select the BlendScan zip file
 4. Enable the addon by checking the box next to "Security: BlendScan"
 
 ### Method 3: Development Installation
 ```bash
-git clone https://gitlab.com/kents00/blendscan.git
+git clone https://github.com/kents00/blendscan.git
 cd blendscan
 # Copy to Blender addons directory
 cp -r . ~/.config/blender/4.4/scripts/addons/blendscan/
@@ -131,7 +131,7 @@ with open('/reports/security_report.json', 'w') as f:
 ### Docker Compose for Development
 ```bash
 # Clone and run with docker-compose
-git clone https://gitlab.com/kents00/blendscan.git
+git clone https://github.com/kents00/blendscan.git
 cd blendscan
 
 # Start development environment
@@ -285,7 +285,7 @@ We welcome contributions to improve BlendScan's security capabilities!
 
 ### Development Setup
 ```bash
-git clone https://gitlab.com/kents00/blendscan.git
+git clone https://github.com/kents00/blendscan.git
 cd blendscan
 # Install in development mode
 ln -s $(pwd) ~/.config/blender/4.4/scripts/addons/blendscan
@@ -297,11 +297,6 @@ ln -s $(pwd) ~/.config/blender/4.4/scripts/addons/blendscan
 3. Test with known malicious patterns
 4. Submit merge request
 
-### Reporting Vulnerabilities
-- **Security Issues**: Email security@example.com
-- **Bug Reports**: Create GitLab issue
-- **Feature Requests**: Use GitLab discussions
-
 ## License
 
 This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
@@ -309,15 +304,14 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 ## Support
 
 ### Getting Help
-- **Documentation**: [GitLab Wiki](https://gitlab.com/kents00/blendscan/-/wikis/home)
-- **Issues**: [GitLab Issues](https://gitlab.com/kents00/blendscan/-/issues)
-- **Discussions**: [GitLab Discussions](https://gitlab.com/kents00/blendscan/-/discussions)
+- **Documentation**: [Github Wiki](https://github.com/kents00/BlendScan/wiki)
+- **Issues**: [Github Issues](https://github.com/kents00/BlendScan/issues)
 - **Docker Hub**: [kents00/blendscan](https://hub.docker.com/r/kents00/blendscan)
 
 ### Author
 **Kent Edoloverio**
 - GitLab: [@kents00](https://gitlab.com/kents00)
-- Email: kent@example.com
+- Github: [@kents00](https://github.com/kents00)
 
 ### Acknowledgments
 - Blender Foundation for the amazing 3D software
