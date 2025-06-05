@@ -297,10 +297,6 @@ ln -s $(pwd) ~/.config/blender/4.4/scripts/addons/blendscan
 3. Test with known malicious patterns
 4. Submit merge request
 
-### Reporting Vulnerabilities
-- **Bug Reports**: Create (Github issue)[https://github.com/kents00/BlendScan/issues]
-- **Feature Requests**: Create (ticket)[https://github.com/kents00/BlendScan/issues/1]
-
 ## License
 
 This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
@@ -308,9 +304,8 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 ## Support
 
 ### Getting Help
-- **Documentation**: [GitLab Wiki](https://gitlab.com/kents00/blendscan/-/wikis/home)
-- **Issues**: [GitLab Issues](https://gitlab.com/kents00/blendscan/-/issues)
-- **Discussions**: [GitLab Discussions](https://gitlab.com/kents00/blendscan/-/discussions)
+- **Documentation**: [Github Wiki](**https://github.com/kents00/blendscan/-/wikis/home**)
+- **Issues**: [Github Issues](https://github.com/kents00/blendscan/-/issues)
 - **Docker Hub**: [kents00/blendscan](https://hub.docker.com/r/kents00/blendscan)
 
 ### Author
