@@ -79,40 +79,46 @@ build:
         if [ -f "__init__.py" ]; then
           echo "Found __init__.py, checking for Blender addon version..."
 
-          # Debug: Show the relevant part of __init__.py
+          # Debug: Show the relevant part of __init__.py (avoid SIGPIPE)
           echo "Searching for version in __init__.py:"
-          grep -A 3 -B 1 '"version"' __init__.py || echo "No 'version' key found"
+          grep -A 3 -B 1 '"version"' __init__.py 2>/dev/null || echo "No 'version' key found"
 
           # Handle Blender addon version format: "version": (1, 0, 0)
-          VERSION_TUPLE=$(grep -A 1 '"version"' __init__.py | grep -oE '\([0-9]+,\s*[0-9]+,\s*[0-9]+\)' | head -1)
-          if [ -n "$VERSION_TUPLE" ]; then
-            echo "Found version tuple: $VERSION_TUPLE"
-            # Extract numbers and convert to dotted format
-            VERSION=$(echo "$VERSION_TUPLE" | sed 's/[(),[:space:]]//g' | tr ',' '.')
-            echo "Converted to: $VERSION"
+          # Use a more robust approach to avoid SIGPIPE
+          if grep -q '"version"' __init__.py 2>/dev/null; then
+            # Extract the version line and the next line, then find the tuple
+            VERSION_LINES=$(grep -A 1 '"version"' __init__.py 2>/dev/null | head -2)
+            VERSION_TUPLE=$(echo "$VERSION_LINES" | grep -oE '\([0-9]+,\s*[0-9]+,\s*[0-9]+\)' 2>/dev/null | head -1)
+
+            if [ -n "$VERSION_TUPLE" ]; then
+              echo "Found version tuple: $VERSION_TUPLE"
+              # Extract numbers and convert to dotted format
+              VERSION=$(echo "$VERSION_TUPLE" | sed 's/[(),[:space:]]//g' | tr ',' '.')
+              echo "Converted to: $VERSION"
+            fi
           fi
 
           # Fallback to standard version patterns if tuple format failed
           if [ -z "$VERSION" ]; then
             echo "Trying standard version patterns in __init__.py..."
-            VERSION=$(grep -E '(version|__version__)' __init__.py | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+            VERSION=$(grep -E '(version|__version__)' __init__.py 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' 2>/dev/null | head -1)
             if [ -n "$VERSION" ]; then
               echo "Found standard version: $VERSION"
             fi
           fi
         elif [ -f "setup.py" ]; then
           echo "Found setup.py, extracting version..."
-          VERSION=$(grep -E 'version=' setup.py | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          VERSION=$(grep -E 'version=' setup.py 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' 2>/dev/null | head -1)
         elif [ -f "pyproject.toml" ]; then
           echo "Found pyproject.toml, extracting version..."
-          VERSION=$(grep -E 'version =' pyproject.toml | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          VERSION=$(grep -E 'version =' pyproject.toml 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' 2>/dev/null | head -1)
         else
           echo "No version files found (__init__.py, setup.py, pyproject.toml)"
         fi
 
         # Validate version format (must be X.Y.Z)
         if [ -n "$VERSION" ]; then
-          if echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+          if echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$' 2>/dev/null; then
             echo "Valid version found: $VERSION"
             echo "Tagging with version: v$VERSION"
             docker tag blendscan-temp $DOCKER_IMAGE_NAME:v$VERSION
