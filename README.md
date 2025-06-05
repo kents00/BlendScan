@@ -298,9 +298,8 @@ ln -s $(pwd) ~/.config/blender/4.4/scripts/addons/blendscan
 4. Submit merge request
 
 ### Reporting Vulnerabilities
-- **Security Issues**: Email security@example.com
-- **Bug Reports**: Create GitLab issue
-- **Feature Requests**: Use GitLab discussions
+- **Bug Reports**: Create (Github issue)[https://github.com/kents00/BlendScan/issues]
+- **Feature Requests**: Create (ticket)[https://github.com/kents00/BlendScan/issues/1]
 
 ## License
 
