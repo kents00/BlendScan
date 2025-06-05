@@ -1,93 +1,248 @@
-# BlendScan
+# BlendScan 🛡️
 
+**Comprehensive security analysis for Blender files and scripts with auto-protection**
 
+[![Blender](https://img.shields.io/badge/Blender-4.4.3+-orange.svg?style=flat&logo=blender)](https://www.blender.org/)
+[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg?style=flat&logo=python)](https://www.python.org/)
+[![License](https://img.shields.io/badge/License-GPL--3.0-green.svg?style=flat)](LICENSE)
+[![Security](https://img.shields.io/badge/Security-Critical-red.svg?style=flat&logo=shield)](https://github.com/kents00/blendscan)
+[![Version](https://img.shields.io/badge/Version-2.0.0-blue.svg?style=flat)](https://gitlab.com/kents00/blendscan)
 
-## Getting started
+## 📋 Table of Contents
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+- [Introduction](#introduction)
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Security Features](#security-features)
+- [Interface](#interface)
+- [Configuration](#configuration)
+- [Contributing](#contributing)
+- [License](#license)
+- [Support](#support)
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+## 🛡️ Introduction
 
-## Add your files
+BlendScan is a comprehensive security addon for Blender that protects users from malicious `.blend` files and embedded scripts. With the rise of malware targeting 3D artists through infected Blender files, BlendScan provides real-time protection, automated threat detection, and secure script execution.
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+**⚠️ Why BlendScan?**
+- Malicious `.blend` files can contain embedded Python scripts that execute automatically
+- Scripts can steal data, install malware, or damage your system
+- BlendScan prevents automatic execution and analyzes content before allowing scripts to run
 
+## ✨ Features
+
+### 🔍 **Comprehensive Threat Detection**
+- **Real-time Script Analysis** - Analyzes Python scripts before execution
+- **Embedded Script Detection** - Finds hidden scripts in text blocks, nodes, and properties
+- **Base64/Hex Decoding** - Detects obfuscated malicious payloads
+- **Driver Expression Analysis** - Scans animation drivers for malicious code
+- **Custom Property Scanning** - Checks for scripts hidden in object properties
+
+### 🛡️ **Auto-Protection System**
+- **Auto-Run Blocking** - Automatically disables "Auto Run Python Scripts"
+- **Ctrl+P Override** - Secure script execution with security analysis
+- **Countdown Warning** - 10-second warning before closing on critical threats
+- **Continuous Monitoring** - Real-time monitoring of text block changes
+
+### 📊 **Risk Assessment**
+- **4-Level Risk System** - Low, Medium, High, Critical
+- **Pattern-Based Detection** - 50+ security rules for threat identification
+- **Network Activity Detection** - Identifies scripts making external connections
+- **System Access Monitoring** - Detects file system and command execution
+
+### 🎯 **Blender-Specific Protection**
+- **Event Handler Analysis** - Scans load/save/render handlers
+- **Node Script Detection** - Analyzes Geometry/Shader node scripts
+- **Addon Verification** - Checks for suspicious addon installations
+- **Driver Namespace Protection** - Monitors driver namespace manipulation
+
+## 📦 Installation
+
+### Method 1: Manual Installation
+1. Download the latest release from [GitLab](https://gitlab.com/kents00/blendscan)
+2. Open Blender and go to `Edit > Preferences > Add-ons`
+3. Click `Install...` and select the BlendScan zip file
+4. Enable the addon by checking the box next to "Security: BlendScan"
+
+### Method 2: Development Installation
+```bash
+git clone https://gitlab.com/kents00/blendscan.git
+cd blendscan
+# Copy to Blender addons directory
+cp -r . ~/.config/blender/4.4/scripts/addons/blendscan/
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/kents00/blendscan.git
-git branch -M main
-git push -uf origin main
+
+### Requirements
+- **Blender 4.4.3+** (tested on latest versions)
+- **Python 3.10+** (included with Blender)
+- **Operating System**: Windows, macOS, Linux
+
+## 🚀 Usage
+
+### Basic Protection (Automatic)
+BlendScan works automatically once installed:
+- **Auto-Run Disabled** - Prevents automatic script execution
+- **File Load Scanning** - Analyzes files when opened
+- **Real-time Monitoring** - Watches for new/modified scripts
+
+### Manual Security Scanning
+
+#### Text Editor Panel
+1. Open the **Text Editor** workspace
+2. Navigate to **Properties Panel** > **BlendScan** tab
+3. Use available tools:
+   - **Analyze Script** - Scan current text block
+   - **Run Script (Secure)** - Execute with security check
+   - **Scan All Scripts** - Comprehensive file analysis
+
+#### Keyboard Shortcuts
+- **Ctrl+P** - Secure script execution (overrides default)
+- Scripts are analyzed before execution with automatic blocking of high-risk code
+
+### Security Dialog
+When threats are detected:
+```
+⚠️ SECURITY THREAT DETECTED
+Blender will close in 10 seconds
+
+Risk Level: CRITICAL
+• Malicious Scripts Found: script.py
+  - Base64 Decoding
+  - System Command Execution
+• Only open files from trusted sources
 ```
 
-## Integrate with your tools
+## 🔒 Security Features
 
-- [ ] [Set up project integrations](https://gitlab.com/kents00/blendscan/-/settings/integrations)
+### Threat Detection Categories
 
-## Collaborate with your team
+| Category | Risk Level | Examples |
+|----------|------------|----------|
+| **Code Execution** | Critical | `exec()`, `eval()`, `compile()` |
+| **System Access** | Critical | `os.system()`, `subprocess.call()` |
+| **Network Activity** | High | HTTP requests, socket connections |
+| **File Operations** | High | File deletion, directory manipulation |
+| **Obfuscation** | High | Base64 encoding, hex strings |
+| **Blender API Abuse** | Medium | Handler registration, driver manipulation |
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+### Protection Levels
 
-## Test and Deploy
+#### 🔴 **Critical Threats**
+- **Immediate Closure** - Blender closes automatically
+- **10-Second Warning** - Countdown dialog with threat details
+- **No Execution** - Scripts are completely blocked
 
-Use the built-in continuous integration in GitLab.
+#### 🟡 **High/Medium Threats**
+- **Warning Messages** - Console and UI notifications
+- **Optional Execution** - User can choose to proceed
+- **Detailed Analysis** - Full threat breakdown
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+#### 🟢 **Low Risk**
+- **Console Logging** - Informational messages
+- **Normal Execution** - Scripts run normally
+- **Background Monitoring** - Continuous observation
 
-***
+## 🖥️ Interface
 
-# Editing this README
+### Text Editor Panel
+```
+┌─ BlendScan Security ─────────────┐
+│ Auto-Run Scripts: DISABLED ✓     │
+│ [Disable Auto-Run (Recommended)] │
+├─ Script: script.py ──────────────┤
+│ [Analyze Script]                 │
+│ [Run Script (Secure)]            │
+│ [Run Script (Unsecured)] ⚠️      │
+│ [Bypass All Security] ❌         │
+├─ Global Security ────────────────┤
+│ [Scan All Scripts]               │
+│ Monitoring Active ✓              │
+└──────────────────────────────────┘
+```
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+### Console Output Example
+```
+BlendScan: Analyzing script 'malicious.py' before execution...
+BLOCKING SCRIPT EXECUTION: malicious.py
+Risk Level: CRITICAL
+Security Issues:
+  Line 15: Base64 Decoding (CRITICAL)
+    Code: decoded = base64.b64decode(payload)
+  Line 23: System Command Execution (CRITICAL)
+    Code: os.system(f"rm -rf {user_home}")
+```
 
-## Suggestions for a good README
+## ⚙️ Configuration
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+### Auto-Run Setting
+```python
+# Automatically disabled on addon installation
+bpy.context.preferences.filepaths.use_scripts_auto_execute = False
+```
 
-## Name
-Choose a self-explaining name for your project.
+### Custom Security Rules
+Add custom patterns to `analyzer.py`:
+```python
+BlenderSecurityRule(
+    "Custom Pattern",
+    r"suspicious_function\s*\(",
+    "HIGH",
+    "Custom security rule description",
+    "CUSTOM"
+)
+```
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+### Monitoring Intervals
+```python
+# Continuous monitoring every 2 seconds
+bpy.app.timers.register(continuous_monitoring, first_interval=2.0)
+```
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+## 🤝 Contributing
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+We welcome contributions to improve BlendScan's security capabilities!
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+### Development Setup
+```bash
+git clone https://gitlab.com/kents00/blendscan.git
+cd blendscan
+# Install in development mode
+ln -s $(pwd) ~/.config/blender/4.4/scripts/addons/blendscan
+```
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+### Adding Security Rules
+1. Edit `analyzer.py`
+2. Add new `BlenderSecurityRule` objects
+3. Test with known malicious patterns
+4. Submit merge request
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+### Reporting Vulnerabilities
+- **Security Issues**: Email security@example.com
+- **Bug Reports**: Create GitLab issue
+- **Feature Requests**: Use GitLab discussions
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+## 📄 License
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+## 🆘 Support
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+### Getting Help
+- **Documentation**: [GitLab Wiki](https://gitlab.com/kents00/blendscan/-/wikis/home)
+- **Issues**: [GitLab Issues](https://gitlab.com/kents00/blendscan/-/issues)
+- **Discussions**: [GitLab Discussions](https://gitlab.com/kents00/blendscan/-/discussions)
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+### Author
+**Kent Edoloverio**
+- GitLab: [@kents00](https://gitlab.com/kents00)
+- Email: kent@example.com
 
-## License
-For open source projects, say how it is licensed.
+### Acknowledgments
+- Blender Foundation for the amazing 3D software
+- Security researchers identifying .blend file vulnerabilities
+- Open source community for security best practices
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+---
+
+⚠️ **Security Notice**: Always scan files from unknown sources. BlendScan provides protection but cannot guarantee 100% security against all threats.
