@@ -144,3 +144,26 @@ RUN echo '#!/bin/bash\n\
     print('\''To scan files, mount them to /data and specify the path.'\'')\n\
     \n\
     except Exception as e:\n\
+    print(f'\''✗ Error loading BlendScan: {e}'\'')\n\
+    sys.exit(1)\
+    " --enable-autoexec || {\n\
+    echo "ERROR: Failed to start Blender with BlendScan"\n\
+    echo "This might be due to graphics driver issues in the container"\n\
+    echo "Try running with: --env LIBGL_ALWAYS_SOFTWARE=1"\n\
+    exit 1\n\
+    }\n\
+    else\n\
+    echo "Executing: blender $@"\n\
+    exec /opt/blender/blender "$@"\n\
+    fi' > /home/blender/start-blendscan.sh \
+    && chmod +x /home/blender/start-blendscan.sh
+
+# Set working directory for file operations
+WORKDIR /data
+
+# Expose volume for .blend files
+VOLUME ["/data"]
+
+# Default command
+ENTRYPOINT ["/home/blender/start-blendscan.sh"]
+CMD []
