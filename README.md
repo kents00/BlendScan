@@ -7,12 +7,14 @@
 [![License](https://img.shields.io/badge/License-GPL--3.0-green.svg?style=flat)](LICENSE)
 [![Security](https://img.shields.io/badge/Security-Critical-red.svg?style=flat&logo=shield)](https://github.com/kents00/blendscan)
 [![Version](https://img.shields.io/badge/Version-1.0.0-blue.svg?style=flat)](https://gitlab.com/kents00/blendscan)
+[![Docker](https://img.shields.io/badge/Docker-Available-blue.svg?style=flat&logo=docker)](https://hub.docker.com/r/kents00/blendscan)
 
 ## Table of Contents
 
 - [Introduction](#introduction)
 - [Features](#features)
 - [Installation](#installation)
+- [Docker Usage](#docker-usage)
 - [Usage](#usage)
 - [Security Features](#security-features)
 - [Interface](#interface)
@@ -59,13 +61,33 @@ BlendScan is a comprehensive security addon for Blender that protects users from
 
 ## Installation
 
-### Method 1: Manual Installation
+### Method 1: Docker (Recommended for Security)
+```bash
+# Pull the latest BlendScan image
+docker pull kents00/blendscan:latest
+
+# Run with your .blend files
+docker run -it --rm -v /path/to/your/files:/data kents00/blendscan
+
+# Scan a specific file
+docker run --rm -v /path/to/your/files:/data kents00/blendscan blender --background /data/suspicious.blend
+
+# Interactive mode with GUI (Linux with X11)
+docker run -it --rm \
+  -v /path/to/your/files:/data \
+  -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
+  -e DISPLAY=$DISPLAY \
+  --network host \
+  kents00/blendscan blender
+```
+
+### Method 2: Manual Installation
 1. Download the latest release from [GitLab](https://gitlab.com/kents00/blendscan)
 2. Open Blender and go to `Edit > Preferences > Add-ons`
 3. Click `Install...` and select the BlendScan zip file
 4. Enable the addon by checking the box next to "Security: BlendScan"
 
-### Method 2: Development Installation
+### Method 3: Development Installation
 ```bash
 git clone https://gitlab.com/kents00/blendscan.git
 cd blendscan
@@ -77,6 +99,64 @@ cp -r . ~/.config/blender/4.4/scripts/addons/blendscan/
 - **Blender 4.4.3+** (tested on latest versions)
 - **Python 3.10+** (included with Blender)
 - **Operating System**: Windows, macOS, Linux
+- **Docker** (optional, for containerized security scanning)
+
+## Docker Usage
+
+### Basic Security Scanning
+```bash
+# Scan all .blend files in a directory
+docker run --rm -v /path/to/files:/data kents00/blendscan \
+  blender --background --python-expr "
+import bpy
+import os
+for root, dirs, files in os.walk('/data'):
+    for file in files:
+        if file.endswith('.blend'):
+            print(f'Scanning: {file}')
+            bpy.ops.wm.open_mainfile(filepath=os.path.join(root, file))
+"
+
+# Automated security report
+docker run --rm -v /path/to/files:/data -v /path/to/reports:/reports kents00/blendscan \
+  blender --background /data/file.blend --python-expr "
+# Security analysis script
+analyzer = BlenderSecurityAnalyzer()
+results = analyzer.analyze_blend_file_security(bpy.context)
+with open('/reports/security_report.json', 'w') as f:
+    json.dump(results, f, indent=2)
+"
+```
+
+### Docker Compose for Development
+```bash
+# Clone and run with docker-compose
+git clone https://gitlab.com/kents00/blendscan.git
+cd blendscan
+
+# Start development environment
+docker-compose up blendscan
+
+# Run with GUI (Linux)
+docker-compose up blendscan-gui
+```
+
+### Advanced Docker Usage
+```bash
+# Build custom image with additional tools
+FROM kents00/blendscan:latest
+RUN apt-get update && apt-get install -y \
+    clamav \
+    rkhunter \
+    && freshclam
+
+# Multi-stage security pipeline
+docker run --rm \
+  -v malware-scan-volume:/scan \
+  -v /path/to/files:/data \
+  kents00/blendscan \
+  blender --background --python /data/batch_security_scan.py
+```
 
 ## Usage
 
@@ -232,6 +312,7 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 - **Documentation**: [GitLab Wiki](https://gitlab.com/kents00/blendscan/-/wikis/home)
 - **Issues**: [GitLab Issues](https://gitlab.com/kents00/blendscan/-/issues)
 - **Discussions**: [GitLab Discussions](https://gitlab.com/kents00/blendscan/-/discussions)
+- **Docker Hub**: [kents00/blendscan](https://hub.docker.com/r/kents00/blendscan)
 
 ### Author
 **Kent Edoloverio**
