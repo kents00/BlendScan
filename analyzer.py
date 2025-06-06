@@ -813,6 +813,421 @@ class BlenderSecurityAnalyzer:
 
         return addon_issues
 
+    def analyze_addon_security(self, addon_name: str) -> Dict:
+        """Analyze security of a specific addon"""
+        results = {
+            'addon_name': addon_name,
+            'risk_level': 'LOW',
+            'issues': [],
+            'suspicious_imports': [],
+            'script_files': [],
+            'addon_info': {},
+            'permissions_requested': [],
+            'network_activity': False,
+            'system_access': False
+        }
+
+        try:
+            # Get addon module info
+            addon_info = self.get_addon_info(addon_name)
+            results['addon_info'] = addon_info
+
+            # Find addon files
+            addon_files = self._find_addon_files(addon_name)
+
+            # Analyze each Python file in the addon
+            for file_path in addon_files:
+                try:
+                    with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                        content = f.read()
+
+                    # Analyze the script
+                    script_analysis = self.analyze_script(content, file_path)
+
+                    # Merge results
+                    results['issues'].extend(script_analysis['issues'])
+                    results['suspicious_imports'].extend(script_analysis['suspicious_imports'])
+                    results['script_files'].append({
+                        'file': file_path,
+                        'risk_level': script_analysis['risk_level'],
+                        'issue_count': len(script_analysis['issues'])
+                    })
+
+                    if script_analysis['network_activity']:
+                        results['network_activity'] = True
+                    if script_analysis['system_access']:
+                        results['system_access'] = True
+
+                    # Update overall risk level
+                    if script_analysis['risk_level'] == 'CRITICAL':
+                        results['risk_level'] = 'CRITICAL'
+                    elif script_analysis['risk_level'] == 'HIGH' and results['risk_level'] not in ['CRITICAL']:
+                        results['risk_level'] = 'HIGH'
+                    elif script_analysis['risk_level'] == 'MEDIUM' and results['risk_level'] in ['LOW']:
+                        results['risk_level'] = 'MEDIUM'
+
+                except Exception as e:
+                    print(f"Error analyzing addon file {file_path}: {e}")
+                    continue
+
+            # Check for addon-specific security patterns
+            self._check_addon_specific_risks(results)
+
+        except Exception as e:
+            print(f"Error analyzing addon {addon_name}: {e}")
+            results['issues'].append({
+                'type': 'ANALYSIS_ERROR',
+                'severity': 'LOW',
+                'description': f'Error during analysis: {str(e)}',
+                'category': 'ERROR',
+                'line': 0,
+                'code': ''
+            })
+
+        return results
+
+    def get_addon_info(self, addon_name: str) -> Dict:
+        """Get addon information including developer contact details"""
+        addon_info = {
+            'name': addon_name,
+            'wiki_url': '',
+            'tracker_url': '',
+            'author': '',
+            'version': '',
+            'description': ''
+        }
+
+        try:
+            # Try to get addon module
+            import sys
+            if addon_name in sys.modules:
+                addon_module = sys.modules[addon_name]
+
+                # Check for bl_info
+                if hasattr(addon_module, 'bl_info'):
+                    bl_info = addon_module.bl_info
+                    addon_info.update({
+                        'name': bl_info.get('name', addon_name),
+                        'wiki_url': bl_info.get('wiki_url', ''),
+                        'tracker_url': bl_info.get('tracker_url', ''),
+                        'author': bl_info.get('author', ''),
+                        'version': str(bl_info.get('version', '')),
+                        'description': bl_info.get('description', '')
+                    })
+
+            # Try alternative method using addon preferences
+            try:
+                addon_prefs = bpy.context.preferences.addons.get(addon_name)
+                if addon_prefs and hasattr(addon_prefs, 'module'):
+                    module = addon_prefs.module
+                    if hasattr(module, 'bl_info'):
+                        bl_info = module.bl_info
+                        addon_info.update({
+                            'name': bl_info.get('name', addon_name),
+                            'wiki_url': bl_info.get('wiki_url', ''),
+                            'tracker_url': bl_info.get('tracker_url', ''),
+                            'author': bl_info.get('author', ''),
+                            'version': str(bl_info.get('version', '')),
+                            'description': bl_info.get('description', '')
+                        })
+            except:
+                pass
+
+        except Exception as e:
+            print(f"Error getting addon info for {addon_name}: {e}")
+
+        return addon_info
+
+    def _find_addon_files(self, addon_name: str) -> List[str]:
+        """Find all Python files belonging to an addon"""
+        addon_files = []
+
+        try:
+            import os
+            import sys
+
+            # Method 1: Check addon paths with proper script_paths() handling
+            addon_paths = []
+
+            # Try multiple methods to get addon paths
+            try:
+                # Method 1a: Try the newer method first (no arguments) for Blender 4.4+
+                script_paths = bpy.utils.script_paths()
+                for path in script_paths:
+                    addon_dir = os.path.join(path, "addons")
+                    if os.path.exists(addon_dir):
+                        addon_paths.append(addon_dir)
+                print(f"BlendScan: Found {len(addon_paths)} addon paths using script_paths()")
+
+            except (TypeError, AttributeError) as e:
+                print(f"BlendScan: script_paths() method failed: {e}")
+
+                # Method 1b: Try user resource method
+                try:
+                    user_scripts = bpy.utils.user_resource('SCRIPTS')
+                    if user_scripts:
+                        user_addons = os.path.join(user_scripts, "addons")
+                        if os.path.exists(user_addons):
+                            addon_paths.append(user_addons)
+                            print(f"BlendScan: Added user addon path: {user_addons}")
+                except Exception as e2:
+                    print(f"BlendScan: user_resource method failed: {e2}")
+
+                # Method 1c: Try system resource method
+                try:
+                    system_scripts = bpy.utils.system_resource('SCRIPTS')
+                    if system_scripts:
+                        system_addons = os.path.join(system_scripts, "addons")
+                        if os.path.exists(system_addons):
+                            addon_paths.append(system_addons)
+                            print(f"BlendScan: Added system addon path: {system_addons}")
+                except Exception as e3:
+                    print(f"BlendScan: system_resource method failed: {e3}")
+
+            # Method 1d: Check common Blender addon locations as fallback
+            if not addon_paths:
+                common_paths = []
+
+                # Get Blender executable location and derive addon paths
+                try:
+                    blender_path = bpy.app.binary_path
+                    if blender_path:
+                        blender_dir = os.path.dirname(os.path.dirname(blender_path))
+                        potential_addon_paths = [
+                            os.path.join(blender_dir, "scripts", "addons"),
+                            os.path.join(blender_dir, "scripts", "addons_contrib"),
+                        ]
+                        for path in potential_addon_paths:
+                            if os.path.exists(path):
+                                common_paths.append(path)
+                except Exception as e4:
+                    print(f"BlendScan: Could not derive paths from binary: {e4}")
+
+                # Check user profile locations
+                try:
+                    import os.path
+                    user_home = os.path.expanduser("~")
+                    potential_user_paths = [
+                        os.path.join(user_home, "AppData", "Roaming", "Blender Foundation", "Blender", "*", "scripts", "addons"),
+                        os.path.join(user_home, ".config", "blender", "*", "scripts", "addons"),
+                        os.path.join(user_home, "Library", "Application Support", "Blender", "*", "scripts", "addons"),
+                    ]
+
+                    import glob
+                    for pattern in potential_user_paths:
+                        for path in glob.glob(pattern):
+                            if os.path.exists(path):
+                                common_paths.append(path)
+
+                except Exception as e5:
+                    print(f"BlendScan: Could not check user profile paths: {e5}")
+
+                addon_paths.extend(common_paths)
+                if common_paths:
+                    print(f"BlendScan: Found {len(common_paths)} addon paths using fallback methods")
+
+            # Search for addon files in all found paths
+            for addon_path in addon_paths:
+                if not os.path.exists(addon_path):
+                    continue
+
+                print(f"BlendScan: Searching in addon path: {addon_path}")
+
+                # Check for addon directory
+                addon_dir = os.path.join(addon_path, addon_name)
+                if os.path.isdir(addon_dir):
+                    print(f"BlendScan: Found addon directory: {addon_dir}")
+                    # Find all .py files recursively
+                    for root, dirs, files in os.walk(addon_dir):
+                        for file in files:
+                            if file.endswith('.py'):
+                                addon_files.append(os.path.join(root, file))
+
+                # Check for single-file addon
+                single_file = os.path.join(addon_path, f"{addon_name}.py")
+                if os.path.isfile(single_file):
+                    print(f"BlendScan: Found single-file addon: {single_file}")
+                    addon_files.append(single_file)
+
+            # Method 2: Check if addon is loaded as a module
+            if not addon_files and addon_name in sys.modules:
+                print(f"BlendScan: Addon '{addon_name}' found in sys.modules, getting file path")
+                try:
+                    addon_module = sys.modules[addon_name]
+                    if hasattr(addon_module, '__file__') and addon_module.__file__:
+                        module_file = addon_module.__file__
+                        print(f"BlendScan: Module file: {module_file}")
+
+                        if module_file.endswith('.pyc'):
+                            # Try to find the .py file
+                            py_file = module_file[:-1]  # Remove 'c' from .pyc
+                            if os.path.exists(py_file):
+                                addon_files.append(py_file)
+                            else:
+                                addon_files.append(module_file)
+                        else:
+                            addon_files.append(module_file)
+
+                        # If it's in a package, get the directory
+                        module_dir = os.path.dirname(module_file)
+                        if os.path.isdir(module_dir):
+                            print(f"BlendScan: Scanning module directory: {module_dir}")
+                            for root, dirs, files in os.walk(module_dir):
+                                for file in files:
+                                    if file.endswith('.py'):
+                                        full_path = os.path.join(root, file)
+                                        if full_path not in addon_files:
+                                            addon_files.append(full_path)
+                except Exception as e:
+                    print(f"BlendScan: Error getting module file for {addon_name}: {e}")
+
+            # Method 3: Check addon_utils for more comprehensive search
+            try:
+                import addon_utils
+                print(f"BlendScan: Using addon_utils to find '{addon_name}'")
+
+                for addon_module_info in addon_utils.modules():
+                    if addon_module_info and hasattr(addon_module_info, '__name__'):
+                        module_name = addon_module_info.__name__
+
+                        # Handle bl_ext prefix for extensions
+                        clean_name = module_name
+                        if clean_name.startswith('bl_ext.'):
+                            clean_name = clean_name[7:]
+
+                        if clean_name == addon_name or module_name == addon_name:
+                            print(f"BlendScan: Found matching addon module: {module_name}")
+                            if hasattr(addon_module_info, '__file__') and addon_module_info.__file__:
+                                module_file = addon_module_info.__file__
+                                if module_file not in addon_files:
+                                    addon_files.append(module_file)
+
+                                # Get directory files if it's a package
+                                module_dir = os.path.dirname(module_file)
+                                if os.path.isdir(module_dir):
+                                    for root, dirs, files in os.walk(module_dir):
+                                        for file in files:
+                                            if file.endswith('.py'):
+                                                full_path = os.path.join(root, file)
+                                                if full_path not in addon_files:
+                                                    addon_files.append(full_path)
+                            break
+
+            except Exception as e:
+                print(f"BlendScan: Error using addon_utils for {addon_name}: {e}")
+
+            # Method 4: Check enabled addons preferences for path hints
+            try:
+                if addon_name in bpy.context.preferences.addons.keys():
+                    addon_pref = bpy.context.preferences.addons[addon_name]
+                    if hasattr(addon_pref, 'module') and hasattr(addon_pref.module, '__file__'):
+                        module_file = addon_pref.module.__file__
+                        if module_file and module_file not in addon_files:
+                            addon_files.append(module_file)
+
+                            # Check directory
+                            module_dir = os.path.dirname(module_file)
+                            if os.path.isdir(module_dir):
+                                for root, dirs, files in os.walk(module_dir):
+                                    for file in files:
+                                        if file.endswith('.py'):
+                                            full_path = os.path.join(root, file)
+                                            if full_path not in addon_files:
+                                                addon_files.append(full_path)
+            except Exception as e:
+                print(f"BlendScan: Error checking addon preferences for {addon_name}: {e}")
+
+        except Exception as e:
+            print(f"BlendScan: Error finding addon files for {addon_name}: {e}")
+            import traceback
+            print(f"BlendScan: Traceback: {traceback.format_exc()}")
+
+        # Remove duplicates and sort
+        addon_files = list(set(addon_files))
+        addon_files.sort()
+
+        print(f"BlendScan: Found {len(addon_files)} files for addon '{addon_name}': {addon_files[:3]}{'...' if len(addon_files) > 3 else ''}")
+
+        return addon_files
+
+    def _check_addon_specific_risks(self, results: Dict):
+        """Check for addon-specific security risks"""
+        addon_name = results['addon_name']
+
+        # Check for suspicious addon naming patterns
+        suspicious_name_patterns = [
+            r'^temp_',
+            r'^test_',
+            r'^crack_',
+            r'^hack_',
+            r'^[a-f0-9]{8,}$',  # Random hex strings
+            r'^[a-z]{1,3}$'     # Very short names
+        ]
+
+        for pattern in suspicious_name_patterns:
+            if re.match(pattern, addon_name, re.IGNORECASE):
+                results['issues'].append({
+                    'type': 'SUSPICIOUS_ADDON_NAME',
+                    'severity': 'MEDIUM',
+                    'description': f'Addon name matches suspicious pattern: {pattern}',
+                    'category': 'ADDON',
+                    'line': 0,
+                    'code': f'Addon name: {addon_name}'
+                })
+
+        # Check for missing or suspicious bl_info
+        addon_info = results['addon_info']
+        if not addon_info.get('author'):
+            results['issues'].append({
+                'type': 'MISSING_AUTHOR_INFO',
+                'severity': 'LOW',
+                'description': 'Addon missing author information',
+                'category': 'ADDON',
+                'line': 0,
+                'code': 'bl_info missing author field'
+            })
+
+        if not addon_info.get('description'):
+            results['issues'].append({
+                'type': 'MISSING_DESCRIPTION',
+                'severity': 'LOW',
+                'description': 'Addon missing description',
+                'category': 'ADDON',
+                'line': 0,
+                'code': 'bl_info missing description field'
+            })
+
+        # Check for network-related permissions in addon
+        if results['network_activity'] and not addon_info.get('wiki_url') and not addon_info.get('tracker_url'):
+            results['issues'].append({
+                'type': 'NETWORK_ACCESS_NO_CONTACT',
+                'severity': 'HIGH',
+                'description': 'Addon has network access but no developer contact info',
+                'category': 'ADDON',
+                'line': 0,
+                'code': 'Network activity detected'
+            })
+
+        # Escalate risk if multiple concerning factors
+        high_risk_factors = sum([
+            results['network_activity'],
+            results['system_access'],
+            len([i for i in results['issues'] if i['severity'] == 'CRITICAL']) > 0,
+            not addon_info.get('author'),
+            len(results['suspicious_imports']) > 3
+        ])
+
+        if high_risk_factors >= 3 and results['risk_level'] not in ['CRITICAL']:
+            results['risk_level'] = 'HIGH'
+            results['issues'].append({
+                'type': 'MULTIPLE_RISK_FACTORS',
+                'severity': 'HIGH',
+                'description': f'Multiple security risk factors detected ({high_risk_factors})',
+                'category': 'ADDON',
+                'line': 0,
+                'code': 'Combined risk assessment'
+            })
+
     def _calculate_overall_risk(self, results: Dict) -> str:
         """Calculate overall risk level based on all analyses"""
         risk_factors = []
@@ -886,7 +1301,7 @@ class BlenderSecurityAnalyzer:
             return False
 
         # Check for base64 character set and padding
-        base64_chars = set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=')
+        base64_chars = set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=' )
         return (
             len(set(s) - base64_chars) == 0 and
             s.count('=') <= 2 and

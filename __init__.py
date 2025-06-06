@@ -1,7 +1,7 @@
 bl_info = {
     "name": "BlendScan",
     "author": "Kent Edoloverio",
-    "version": (1, 0, 0),
+    "version": (1, 0, 1),
     "blender": (4, 4, 3),
     "location": "Text Editor > Properties > BlendScan",
     "description": "Comprehensive security analysis for Blender files and scripts with auto-protection",
@@ -871,6 +871,631 @@ def run_security_analysis():
     # Return None to unregister the timer
     return None
 
+# Global addon monitoring state
+addon_monitor_state = {
+    'enabled_addons': set(),
+    'installed_addons': set(),
+    'monitoring_active': False,
+    'warning_shown': {},  # Track when warnings were last shown for each addon
+    'warning_cooldown': 1  # Cooldown period in seconds before showing same warning again
+}
+
+class SECURITY_OT_AddonSecurityWarning(bpy.types.Operator):
+    """Addon security warning dialog with user choices"""
+    bl_idname = "security.addon_security_warning"
+    bl_label = "ADDON SECURITY WARNING"
+    bl_options = {'REGISTER', 'INTERNAL'}
+
+    addon_name: bpy.props.StringProperty(default="")
+    security_issues: bpy.props.StringProperty(default="")
+    wiki_url: bpy.props.StringProperty(default="")
+    tracker_url: bpy.props.StringProperty(default="")
+
+    def execute(self, context):
+        # This should not be called directly
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        wm = context.window_manager
+        return wm.invoke_props_dialog(self, width=700)
+
+    def draw(self, context):
+        layout = self.layout
+
+        # Header with warning
+        header_box = layout.box()
+        header_box.alert = True
+
+        row = header_box.row()
+        row.scale_y = 1.5
+        row.label(text="ADDON SECURITY WARNING", icon='ERROR')
+
+        row = header_box.row()
+        row.label(text=f"Addon: {self.addon_name}", icon='SCRIPT')
+
+        layout.separator()
+
+        # Security details
+        try:
+            if self.security_issues:
+                issues_data = eval(self.security_issues)
+
+                # Risk level
+                info_box = layout.box()
+                row = info_box.row()
+                row.alert = True
+                risk_level = issues_data.get('risk_level', 'UNKNOWN')
+                row.label(text=f"Risk Level: {risk_level}", icon='CANCEL')
+
+                # Issues found
+                issues = issues_data.get('issues', [])
+                if issues:
+                    issue_box = layout.box()
+                    issue_box.label(text="Security Issues Found:", icon='TEXT')
+
+                    for issue in issues[:5]:  # Show first 5 issues
+                        row = issue_box.row()
+                        if issue['severity'] in ['CRITICAL', 'HIGH']:
+                            row.alert = True
+                        row.label(text=f"• {issue['type']}: {issue['description']}")
+
+                # Suspicious imports
+                suspicious_imports = issues_data.get('suspicious_imports', [])
+                if suspicious_imports:
+                    import_box = layout.box()
+                    import_box.label(text="Suspicious Imports:", icon='IMPORT')
+                    for imp in suspicious_imports[:3]:
+                        import_box.label(text=f"• {imp}")
+
+        except Exception as e:
+            error_box = layout.box()
+            error_box.alert = True
+            error_box.label(text="Error displaying security details")
+
+        layout.separator()
+
+        # Warning message
+        warning_box = layout.box()
+        warning_box.alert = True
+        warning_box.label(text="This addon contains potentially malicious code!")
+        warning_box.label(text="Enabling it may compromise your system security.")
+
+        layout.separator()
+
+        # Action buttons
+        button_row = layout.row()
+        button_row.scale_y = 1.5
+
+        # Developer contact buttons
+        if self.wiki_url or self.tracker_url:
+            layout.separator()
+            dev_box = layout.box()
+            dev_box.label(text="Contact Developer:", icon='URL')
+
+            dev_row = dev_box.row()
+            if self.wiki_url:
+                wiki_op = dev_row.operator("wm.url_open", text="Wiki/Documentation", icon='HELP')
+                wiki_op.url = self.wiki_url
+
+            if self.tracker_url:
+                tracker_op = dev_row.operator("wm.url_open", text="Bug Tracker", icon='TRACKBALL')
+                tracker_op.url = self.tracker_url
+
+class SECURITY_OT_AddonMonitorToggle(bpy.types.Operator):
+    """Toggle addon security monitoring"""
+    bl_idname = "security.addon_monitor_toggle"
+    bl_label = "Toggle Addon Monitoring"
+    bl_description = "Enable/disable real-time addon security monitoring"
+
+    def execute(self, context):
+        global addon_monitor_state
+
+        if addon_monitor_state['monitoring_active']:
+            stop_addon_monitoring()
+            self.report({'INFO'}, "Addon security monitoring disabled")
+        else:
+            start_addon_monitoring()
+            self.report({'INFO'}, "Addon security monitoring enabled")
+
+        return {'FINISHED'}
+
+def start_addon_monitoring():
+    """Start monitoring addon preference changes"""
+    global addon_monitor_state
+
+    try:
+        # Initialize current addon state
+        addon_monitor_state['enabled_addons'] = set(bpy.context.preferences.addons.keys())
+        addon_monitor_state['installed_addons'] = get_installed_addons()
+        addon_monitor_state['monitoring_active'] = True
+
+        # Register monitoring timer
+        if not bpy.app.timers.is_registered(monitor_addon_changes):
+            bpy.app.timers.register(monitor_addon_changes, first_interval=1.0)
+            print("BlendScan: Addon security monitoring started")
+
+    except Exception as e:
+        print(f"BlendScan: Error starting addon monitoring: {e}")
+
+def get_installed_addons() -> set:
+    """Get list of all installed addons (both enabled and disabled)"""
+    installed_addons = set()
+
+    try:
+        import addon_utils
+
+        # Get all addon modules (enabled and disabled)
+        for addon_module_info in addon_utils.modules():
+            if addon_module_info and hasattr(addon_module_info, '__name__'):
+                addon_name = addon_module_info.__name__
+                # Remove 'bl_ext.' prefix if present (for extensions)
+                if addon_name.startswith('bl_ext.'):
+                    addon_name = addon_name[7:]
+                installed_addons.add(addon_name)
+
+        # Also check addon paths for .py files
+        import os
+
+        # Get addon paths using the correct method
+        try:
+            # Try the newer method first
+            addon_paths = bpy.utils.script_paths()
+            # Filter for addon directories
+            addon_paths = [os.path.join(path, "addons") for path in addon_paths if os.path.exists(os.path.join(path, "addons"))]
+        except TypeError:
+            # Fallback for older Blender versions
+            try:
+                addon_paths = bpy.utils.script_paths("addons")
+            except:
+                # Final fallback - get user and system addon paths manually
+                addon_paths = []
+                user_scripts = bpy.utils.user_resource('SCRIPTS')
+                if user_scripts:
+                    user_addons = os.path.join(user_scripts, "addons")
+                    if os.path.exists(user_addons):
+                        addon_paths.append(user_addons)
+
+                # Try to get system addon paths
+                try:
+                    import addon_utils
+                    for module_info in addon_utils.modules():
+                        if hasattr(module_info, '__file__') and module_info.__file__:
+                            addon_dir = os.path.dirname(os.path.dirname(module_info.__file__))
+                            if addon_dir not in addon_paths and os.path.exists(addon_dir):
+                                addon_paths.append(addon_dir)
+                except:
+                    pass
+
+        for addon_path in addon_paths:
+            if os.path.exists(addon_path):
+                try:
+                    for item in os.listdir(addon_path):
+                        full_path = os.path.join(addon_path, item)
+
+                        # Check for .py files (single-file addons)
+                        if item.endswith('.py') and os.path.isfile(full_path):
+                            addon_name = item[:-3]  # Remove .py extension
+                            # Skip __pycache__ and other system files
+                            if not item.startswith('__') and not item.startswith('.'):
+                                installed_addons.add(addon_name)
+
+                        # Check for directories (multi-file addons)
+                        elif os.path.isdir(full_path) and not item.startswith('.') and not item.startswith('__'):
+                            # Check if it has __init__.py
+                            init_file = os.path.join(full_path, '__init__.py')
+                            if os.path.exists(init_file):
+                                installed_addons.add(item)
+                except PermissionError:
+                    # Skip directories we can't read
+                    continue
+                except Exception as e:
+                    print(f"BlendScan: Error scanning addon directory {addon_path}: {e}")
+
+    except Exception as e:
+        print(f"BlendScan: Error getting installed addons: {e}")
+
+    return installed_addons
+
+def stop_addon_monitoring():
+    """Stop monitoring addon preference changes"""
+    global addon_monitor_state
+
+    try:
+        addon_monitor_state['monitoring_active'] = False
+
+        if bpy.app.timers.is_registered(monitor_addon_changes):
+            bpy.app.timers.unregister(monitor_addon_changes)
+            print("BlendScan: Addon security monitoring stopped")
+    except Exception as e:
+        print(f"Error stopping addon monitoring: {e}")
+
+def monitor_addon_changes():
+    """Monitor for addon preference changes"""
+    global addon_monitor_state
+
+    try:
+        if not addon_monitor_state['monitoring_active']:
+            return None  # Stop monitoring
+
+        # Check if we can access preferences safely
+        if not hasattr(bpy.context, 'preferences') or not bpy.context.preferences:
+            return 2.0  # Retry in 2 seconds
+
+        current_enabled_addons = set(bpy.context.preferences.addons.keys())
+        current_installed_addons = get_installed_addons()
+
+        previous_enabled_addons = addon_monitor_state['enabled_addons']
+        previous_installed_addons = addon_monitor_state['installed_addons']
+
+        # Find newly enabled addons
+        newly_enabled = current_enabled_addons - previous_enabled_addons
+
+        # Find newly installed addons (whether enabled or not)
+        newly_installed = current_installed_addons - previous_installed_addons
+
+        # Debug: Log all current addons periodically to see what's happening
+        if len(current_enabled_addons) != len(previous_enabled_addons):
+            print(f"BlendScan: Addon count changed - Current: {len(current_enabled_addons)}, Previous: {len(previous_enabled_addons)}")
+            print(f"BlendScan: Newly enabled: {newly_enabled}")
+
+        # Only check newly changed addons to prevent duplicate analysis
+        addons_to_check = set()
+
+        if newly_installed:
+            for addon_name in newly_installed:
+                print(f"BlendScan: Detected newly INSTALLED addon: {addon_name}")
+                addons_to_check.add(addon_name)
+
+        if newly_enabled:
+            for addon_name in newly_enabled:
+                print(f"BlendScan: Detected newly ENABLED addon: {addon_name}")
+                addons_to_check.add(addon_name)
+
+        # Check each addon only once
+        for addon_name in addons_to_check:
+            check_addon_security(addon_name)
+
+        # Update tracked addons
+        addon_monitor_state['enabled_addons'] = current_enabled_addons
+        addon_monitor_state['installed_addons'] = current_installed_addons
+
+        return 1.0  # Check again in 1 second
+
+    except Exception as e:
+        print(f"BlendScan: Addon monitoring error: {e}")
+        import traceback
+        print(f"BlendScan: Traceback: {traceback.format_exc()}")
+        return 2.0  # Retry in 2 seconds
+
+def check_addon_security(addon_name: str):
+    """Check security of a specific addon"""
+    try:
+        print(f"BlendScan: Starting detailed security analysis for addon: {addon_name}")
+
+        # Check if we recently showed a warning for this addon
+        import time
+        current_time = time.time()
+        last_warning_time = addon_monitor_state['warning_shown'].get(addon_name, 0)
+
+        if current_time - last_warning_time < addon_monitor_state['warning_cooldown']:
+            print(f"BlendScan: Skipping duplicate warning for {addon_name} (cooldown active)")
+            return
+
+        analyzer = BlenderSecurityAnalyzer()
+        addon_analysis = analyzer.analyze_addon_security(addon_name)
+
+        print(f"BlendScan: Analysis completed for {addon_name}")
+        print(f"BlendScan: Risk level: {addon_analysis['risk_level']}")
+        print(f"BlendScan: Issues found: {len(addon_analysis['issues'])}")
+        print(f"BlendScan: Files analyzed: {len(addon_analysis['script_files'])}")
+
+        # Special handling for test/malware addons - analyze the module code directly
+        if any(keyword in addon_name.lower() for keyword in ['test', 'malware', 'security', 'threat']):
+            print(f"BlendScan: Performing enhanced analysis for test addon: {addon_name}")
+
+            # Try to get the actual module code from sys.modules
+            import sys
+            if addon_name in sys.modules:
+                addon_module = sys.modules[addon_name]
+
+                # Try to get source code if available
+                try:
+                    import inspect
+                    source_code = inspect.getsource(addon_module)
+                    print(f"BlendScan: Got source code for {addon_name} ({len(source_code)} chars)")
+
+                    # Analyze the source code directly
+                    script_analysis = analyzer.analyze_script(source_code, f"{addon_name}_module_source")
+
+                    print(f"BlendScan: Module source analysis - Risk: {script_analysis['risk_level']}, Issues: {len(script_analysis['issues'])}")
+
+                    # Merge the results
+                    addon_analysis['issues'].extend(script_analysis['issues'])
+                    addon_analysis['suspicious_imports'].extend(script_analysis['suspicious_imports'])
+
+                    if script_analysis['network_activity']:
+                        addon_analysis['network_activity'] = True
+                    if script_analysis['system_access']:
+                        addon_analysis['system_access'] = True
+
+                    # Update risk level to highest found
+                    risk_levels = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']
+                    current_risk_idx = risk_levels.index(addon_analysis['risk_level'])
+                    script_risk_idx = risk_levels.index(script_analysis['risk_level'])
+
+                    if script_risk_idx > current_risk_idx:
+                        addon_analysis['risk_level'] = script_analysis['risk_level']
+
+                except Exception as e:
+                    print(f"BlendScan: Could not get source code for {addon_name}: {e}")
+
+                # Also check if the module has executed any suspicious functions
+                suspicious_attributes = ['register', 'unregister', '__init__', 'bl_info']
+                for attr_name in suspicious_attributes:
+                    if hasattr(addon_module, attr_name):
+                        attr_obj = getattr(addon_module, attr_name)
+                        if callable(attr_obj):
+                            try:
+                                attr_source = inspect.getsource(attr_obj)
+                                attr_analysis = analyzer.analyze_script(attr_source, f"{addon_name}_{attr_name}")
+
+                                if attr_analysis['issues']:
+                                    print(f"BlendScan: Found issues in {addon_name}.{attr_name}: {len(attr_analysis['issues'])}")
+                                    addon_analysis['issues'].extend(attr_analysis['issues'])
+
+                                    # Update risk level if higher
+                                    attr_risk_idx = risk_levels.index(attr_analysis['risk_level'])
+                                    current_risk_idx = risk_levels.index(addon_analysis['risk_level'])
+                                    if attr_risk_idx > current_risk_idx:
+                                        addon_analysis['risk_level'] = attr_analysis['risk_level']
+
+                            except Exception as e:
+                                pass  # Skip if we can't analyze this attribute
+
+        # Log some issues for debugging
+        if addon_analysis['issues']:
+            print(f"BlendScan: Issues found in {addon_name}:")
+            for issue in addon_analysis['issues'][:5]:
+                print(f"  - {issue['type']} ({issue['severity']}): {issue['description']}")
+
+        # Check if addon has security issues
+        if addon_analysis['risk_level'] in ['HIGH', 'CRITICAL']:
+            print(f"BlendScan: SECURITY THREAT detected in addon: {addon_name}")
+            print(f"Risk Level: {addon_analysis['risk_level']}")
+
+            # Record that we're showing a warning for this addon
+            addon_monitor_state['warning_shown'][addon_name] = current_time
+
+            # Get addon info for developer contact
+            try:
+                addon_info = analyzer.get_addon_info(addon_name)
+            except Exception as e:
+                print(f"BlendScan: Error getting addon info: {e}")
+                addon_info = {}
+
+            # Show security warning dialog
+            try:
+                print(f"BlendScan: Showing security warning dialog for {addon_name}")
+                bpy.ops.security.addon_security_warning(
+                    'INVOKE_DEFAULT',
+                    addon_name=addon_name,
+                    security_issues=str(addon_analysis),
+                    wiki_url=addon_info.get('wiki_url', ''),
+                    tracker_url=addon_info.get('tracker_url', '')
+                )
+
+                # If the addon is currently enabled, disable it immediately for safety
+                if addon_name in bpy.context.preferences.addons.keys():
+                    bpy.ops.preferences.addon_disable(module=addon_name)
+                    print(f"BlendScan: Addon {addon_name} temporarily disabled for security review")
+
+            except Exception as e:
+                print(f"BlendScan: Error showing addon security dialog: {e}")
+                import traceback
+                print(f"BlendScan: Dialog error traceback: {traceback.format_exc()}")
+
+                # Fallback: disable addon if enabled and show console warning
+                if addon_name in bpy.context.preferences.addons.keys():
+                    try:
+                        bpy.ops.preferences.addon_disable(module=addon_name)
+                        print(f"BlendScan: Addon {addon_name} disabled due to security threat")
+                    except:
+                        pass
+                print(f"ADDON SECURITY WARNING: {addon_name} has been flagged due to security risks")
+
+        elif addon_analysis['risk_level'] == 'MEDIUM':
+            print(f"BlendScan: Medium risk addon detected: {addon_name}")
+            print("Medium risk issues found - review addon if experiencing problems")
+
+        else:
+            print(f"BlendScan: Addon {addon_name} passed security check")
+            if addon_analysis['issues']:
+                print(f"BlendScan: Found {len(addon_analysis['issues'])} low-risk issues in {addon_name}")
+
+    except Exception as e:
+        print(f"BlendScan: Error analyzing addon {addon_name}: {e}")
+        import traceback
+        print(f"BlendScan: Traceback: {traceback.format_exc()}")
+
+# Add addon security panel to preferences
+class SECURITY_PT_AddonMonitorPanel(bpy.types.Panel):
+    """Addon security monitoring panel"""
+    bl_label = "Addon Security Monitor"
+    bl_idname = "SECURITY_PT_addon_monitor"
+    bl_space_type = 'TEXT_EDITOR'
+    bl_region_type = 'UI'
+    bl_category = "BlendScan"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        layout = self.layout
+        global addon_monitor_state
+
+        # Monitoring status
+        status_box = layout.box()
+        monitoring_active = addon_monitor_state.get('monitoring_active', False)
+
+        if monitoring_active:
+            row = status_box.row()
+            row.label(text="Addon Monitoring: ACTIVE", icon='CHECKMARK')
+            row = status_box.row()
+            row.operator("security.addon_monitor_toggle", text="Disable Monitoring", icon='PAUSE')
+        else:
+            row = status_box.row()
+            row.alert = True
+            row.label(text="Addon Monitoring: INACTIVE", icon='CANCEL')
+            row = status_box.row()
+            row.operator("security.addon_monitor_toggle", text="Enable Monitoring", icon='PLAY')
+
+        layout.separator()
+
+        # Addon statistics
+        stats_box = layout.box()
+        stats_box.label(text="Addon Statistics", icon='INFO')
+
+        enabled_count = len(bpy.context.preferences.addons.keys())
+        stats_box.label(text=f"Currently Enabled: {enabled_count}")
+
+        installed_count = len(addon_monitor_state.get('installed_addons', set()))
+        stats_box.label(text=f"Total Installed: {installed_count}")
+
+        layout.separator()
+
+        # Manual addon scan
+        scan_box = layout.box()
+        scan_box.label(text="Manual Addon Security Scan", icon='ZOOM_ALL')
+
+        row = scan_box.row()
+        row.operator("security.scan_all_addons", text="Scan Enabled Addons", icon='SCRIPT')
+
+        row = scan_box.row()
+        row.operator("security.scan_installed_addons", text="Scan All Installed", icon='ZOOM_ALL')
+
+class SECURITY_OT_ScanInstalledAddons(bpy.types.Operator):
+    """Scan all installed addons (enabled and disabled) for security issues"""
+    bl_idname = "security.scan_installed_addons"
+    bl_label = "Scan All Installed Addons"
+    bl_description = "Perform security scan on all installed addons (enabled and disabled)"
+
+    def execute(self, context):
+        global addon_monitor_state
+
+        # Clear warning history for manual scans to allow re-showing warnings
+        addon_monitor_state['warning_shown'].clear()
+
+        installed_addons = list(addon_monitor_state.get('installed_addons', set()))
+
+        if not installed_addons:
+            # Try to get installed addons if not cached
+            installed_addons = list(get_installed_addons())
+
+        if not installed_addons:
+            self.report({'INFO'}, "No addons found")
+            return {'FINISHED'}
+
+        print(f"BlendScan: Scanning {len(installed_addons)} installed addons...")
+
+        risky_addons = []
+        analyzer = BlenderSecurityAnalyzer()
+
+        for addon_name in installed_addons:
+            try:
+                addon_analysis = analyzer.analyze_addon_security(addon_name)
+
+                if addon_analysis['risk_level'] in ['HIGH', 'CRITICAL']:
+                    is_enabled = addon_name in bpy.context.preferences.addons.keys()
+                    risky_addons.append({
+                        'name': addon_name,
+                        'risk_level': addon_analysis['risk_level'],
+                        'issue_count': len(addon_analysis['issues']),
+                        'enabled': is_enabled
+                    })
+                    print(f"RISKY ADDON: {addon_name} - {addon_analysis['risk_level']} ({'ENABLED' if is_enabled else 'DISABLED'})")
+
+            except Exception as e:
+                print(f"Error scanning addon {addon_name}: {e}")
+
+        if risky_addons:
+            self.report({'WARNING'}, f"Found {len(risky_addons)} risky addons - check console")
+            print("=== RISKY ADDONS SUMMARY ===")
+            for addon in risky_addons:
+                status = "ENABLED" if addon['enabled'] else "DISABLED"
+                print(f"- {addon['name']}: {addon['risk_level']} ({addon['issue_count']} issues) [{status}]")
+            print("=== END SUMMARY ===")
+        else:
+            self.report({'INFO'}, "All installed addons passed security scan")
+            print("BlendScan: All installed addons appear safe")
+
+        return {'FINISHED'}
+
+class SECURITY_OT_ScanAllAddons(bpy.types.Operator):
+    """Scan all currently enabled addons for security issues"""
+    bl_idname = "security.scan_all_addons"
+    bl_label = "Scan Enabled Addons"
+    bl_description = "Perform security scan on all currently enabled addons"
+
+    def execute(self, context):
+        global addon_monitor_state
+
+        # Clear warning history for manual scans to allow re-showing warnings
+        addon_monitor_state['warning_shown'].clear()
+
+        enabled_addons = list(bpy.context.preferences.addons.keys())
+
+        if not enabled_addons:
+            self.report({'INFO'}, "No addons are currently enabled")
+            return {'FINISHED'}
+
+        print(f"BlendScan: Scanning {len(enabled_addons)} enabled addons...")
+
+        risky_addons = []
+        analyzer = BlenderSecurityAnalyzer()
+
+        for addon_name in enabled_addons:
+            try:
+                addon_analysis = analyzer.analyze_addon_security(addon_name)
+
+                if addon_analysis['risk_level'] in ['HIGH', 'CRITICAL']:
+                    risky_addons.append({
+                        'name': addon_name,
+                        'risk_level': addon_analysis['risk_level'],
+                        'issue_count': len(addon_analysis['issues'])
+                    })
+                    print(f"RISKY ENABLED ADDON: {addon_name} - {addon_analysis['risk_level']}")
+
+            except Exception as e:
+                print(f"Error scanning enabled addon {addon_name}: {e}")
+
+        if risky_addons:
+            self.report({'WARNING'}, f"Found {len(risky_addons)} risky enabled addons - check console")
+            print("=== RISKY ENABLED ADDONS SUMMARY ===")
+            for addon in risky_addons:
+                print(f"- {addon['name']}: {addon['risk_level']} ({addon['issue_count']} issues)")
+            print("=== END SUMMARY ===")
+        else:
+            self.report({'INFO'}, "All enabled addons passed security scan")
+            print("BlendScan: All enabled addons appear safe")
+
+        return {'FINISHED'}
+
+class SECURITY_OT_RestartMonitoring(bpy.types.Operator):
+    """Restart the continuous monitoring system"""
+    bl_idname = "security.restart_monitoring"
+    bl_label = "Restart Monitoring"
+    bl_description = "Restart the continuous security monitoring system"
+
+    def execute(self, context):
+        # Stop existing monitoring
+        stop_continuous_monitoring()
+        stop_addon_monitoring()
+
+        # Start fresh monitoring
+        start_continuous_monitoring()
+        start_addon_monitoring()
+
+        self.report({'INFO'}, "Security monitoring restarted")
+        return {'FINISHED'}
+
 # Classes to register
 classes = [
     SECURITY_OT_CountdownWarning,
@@ -879,7 +1504,13 @@ classes = [
     SECURITY_OT_AnalyzeCurrentText,
     SECURITY_OT_RunScriptBypass,
     SECURITY_OT_ToggleAutoRun,
-    SECURITY_PT_TextEditorPanel
+    SECURITY_PT_TextEditorPanel,
+    SECURITY_OT_AddonSecurityWarning,
+    SECURITY_OT_AddonMonitorToggle,
+    SECURITY_PT_AddonMonitorPanel,
+    SECURITY_OT_ScanAllAddons,
+    SECURITY_OT_ScanInstalledAddons,
+    SECURITY_OT_RestartMonitoring
 ]
 
 def register():
@@ -907,8 +1538,34 @@ def register():
     # Add keymap override for Ctrl+P
     SecurityKeymapHelper.add_keymap()
 
-    # Start continuous monitoring
-    start_continuous_monitoring()
+    # Start monitoring with a delay to ensure Blender is fully loaded
+    def delayed_start_monitoring():
+        try:
+            start_continuous_monitoring()
+            start_addon_monitoring()
+            print("BlendScan: All monitoring systems started successfully")
+
+            # Force check all currently enabled addons after a short delay
+            def check_existing_addons():
+                try:
+                    print("BlendScan: Performing initial scan of existing addons...")
+                    current_addons = list(bpy.context.preferences.addons.keys())
+                    for addon_name in current_addons:
+                        if any(keyword in addon_name.lower() for keyword in ['test', 'malware', 'security', 'threat']):
+                            print(f"BlendScan: Force-checking suspicious addon: {addon_name}")
+                            check_addon_security(addon_name)
+                except Exception as e:
+                    print(f"BlendScan: Error in initial addon check: {e}")
+                return None
+
+            # Check existing addons after 2 seconds
+            bpy.app.timers.register(check_existing_addons, first_interval=2.0)
+
+        except Exception as e:
+            print(f"BlendScan: Error starting monitoring systems: {e}")
+        return None
+
+    bpy.app.timers.register(delayed_start_monitoring, first_interval=1.0)
 
     # Run immediate security check when addon is enabled
     print("BlendScan addon registered - running initial security check...")
@@ -920,6 +1577,9 @@ def unregister():
 
     # Stop continuous monitoring first
     stop_continuous_monitoring()
+
+    # Stop addon monitoring first
+    stop_addon_monitoring()
 
     # Restore original auto-run setting (optional - user choice)
     # restore_auto_run_scripts()  # Uncomment this line if you want to restore the original setting
