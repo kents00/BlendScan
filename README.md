@@ -4,6 +4,7 @@
 
 [![Blender](https://img.shields.io/badge/Blender-4.4.3+-orange.svg?style=flat&logo=blender)](https://www.blender.org/)
 [![Python](https://img.shields.io/badge/Python-3.10+-blue.svg?style=flat&logo=python)](https://www.python.org/)
+[![VirusTotal](https://img.shields.io/badge/VirusTotal-Clean-brightgreen.svg?style=flat&logo=virustotal)](https://www.virustotal.com/gui/file/a88744a6ea830b3750f2b8f7d75c1e5ffed9de25824282a7083a53ddffbe2738)
 [![License](https://img.shields.io/badge/License-GPL--3.0-green.svg?style=flat)](LICENSE)
 [![Security](https://img.shields.io/badge/Security-Critical-red.svg?style=flat&logo=shield)](https://github.com/kents00/blendscan)
 [![Version](https://img.shields.io/badge/Version-1.0.0-blue.svg?style=flat)](https://gitlab.com/kents00/blendscan)
