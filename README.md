@@ -7,7 +7,7 @@
 [![VirusTotal](https://img.shields.io/badge/VirusTotal-Clean-brightgreen.svg?style=flat&logo=virustotal)](https://www.virustotal.com/gui/file/a88744a6ea830b3750f2b8f7d75c1e5ffed9de25824282a7083a53ddffbe2738)
 [![License](https://img.shields.io/badge/License-GPL--3.0-green.svg?style=flat)](LICENSE)
 [![Security](https://img.shields.io/badge/Security-Critical-red.svg?style=flat&logo=shield)](https://github.com/kents00/blendscan)
-[![Version](https://img.shields.io/badge/Version-1.0.0-blue.svg?style=flat)](https://gitlab.com/kents00/blendscan)
+[![Version](https://img.shields.io/badge/Version-1.0.1-blue.svg?style=flat)](https://github.com/kents00/blendscan)
 [![Docker](https://img.shields.io/badge/Docker-Available-blue.svg?style=flat&logo=docker)](https://hub.docker.com/r/kents00/blendscan)
 
 ## Table of Contents
